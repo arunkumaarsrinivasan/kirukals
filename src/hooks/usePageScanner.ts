@@ -74,8 +74,9 @@ export function usePageScanner() {
 
             const corners = detectPageCorners(img);
             update({ corners, stage: 'adjusting', progress: 70 });
-        } catch (err) {
-            update({ stage: 'error', error: String(err) });
+        } catch (err: any) {
+            console.error('Scanner loadImage error:', err);
+            update({ stage: 'error', error: err?.message || JSON.stringify(err) || String(err) });
         }
     }, []);
 
@@ -94,8 +95,9 @@ export function usePageScanner() {
             const pageCanvas = await dataUrlToCanvas(result.croppedDataUrl);
             const regions = detectSketches(pageCanvas, { minArea: 300, groupDistance: 50, padding: 10 });
             update({ sketchRegions: regions, stage: 'reviewing', progress: 90 });
-        } catch (err) {
-            update({ stage: 'error', error: String(err) });
+        } catch (err: any) {
+            console.error('Scanner runScan error:', err);
+            update({ stage: 'error', error: err?.message || JSON.stringify(err) || String(err) });
         }
     }, [state.sourceDataUrl, state.corners]);
 
@@ -155,8 +157,11 @@ export function usePageScanner() {
 
             update({ stage: 'done', progress: 100 });
             return entry;
-        } catch (err) {
-            update({ stage: 'error', error: String(err) });
+        } catch (err: any) {
+            // Supabase errors are plain objects — extract message properly
+            const message = err?.message ?? err?.error_description ?? JSON.stringify(err, null, 2) ?? String(err);
+            console.error('Scanner savePage error:', { message, code: err?.code, details: err?.details, hint: err?.hint }, err);
+            update({ stage: 'error', error: message });
         }
     }, [state.scanResult, state.sketchRegions]);
 

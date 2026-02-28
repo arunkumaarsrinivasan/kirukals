@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
-/* Custom Logo Font */
+/* ─────────────────────────────────────────────────────────
+   CUSTOM FONTS
+   ───────────────────────────────────────────────────────── */
+
 @font-face {
   font-family: 'Left Hand';
   src: url('../assets/fonts/Left Hand.otf') format('opentype');
@@ -13,54 +16,151 @@
   font-family: 'Left Hand', cursive;
 }
 
+/* ─────────────────────────────────────────────────────────
+   RAW_INPUT DESIGN TOKENS
+   All UI components reference these CSS variables.
+   ───────────────────────────────────────────────────────── */
+
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
+  /* Core palette */
+  --color-bg:            #080808;
+  --color-surface:       #0a0a0a;
+  --color-canvas:        #111111;
+  --color-canvas-area:   #0c0c0c;
+  --color-fg:            #e0e0e0;
+  --color-muted:         #666666;
+  --color-subtle:        #444444;
+  --color-border:        #333333;
+  --color-border-strong: #e0e0e0;
+  --color-accent:        #ff003c;
+  --color-black:         #000000;
+
+  /* Typography */
+  --font-display: 'Archivo Black', sans-serif;
+  --font-mono:    'Space Mono', monospace;
+
+  /* Layout constants */
+  --top-bar-height:    60px;
+  --sidebar-width:     320px;
+  --toolbar-width:     80px;
+  --status-bar-height: 40px;
+
+  /* Legacy aliases (used by Tailwind @theme and old components) */
+  --background: var(--color-bg);
+  --foreground: var(--color-fg);
 }
 
+/* Tailwind v4 theme bridge */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-fg);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono-ui: var(--font-geist-mono);
+}
+
+/* ─────────────────────────────────────────────────────────
+   BASE RESETS & GLOBAL STYLES
+   ───────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  cursor: crosshair !important;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  overflow-x: hidden;
 }
 
-/* Prose dark mode overrides */
-.prose {
-  --tw-prose-body: #d4d4d8;
-  --tw-prose-headings: #fafafa;
-  --tw-prose-links: #a78bfa;
-  --tw-prose-bold: #fafafa;
-  --tw-prose-code: #fafafa;
-  --tw-prose-pre-bg: #18181b;
+/* ─────────────────────────────────────────────────────────
+   TYPOGRAPHY UTILITIES
+   ───────────────────────────────────────────────────────── */
+
+.font-display {
+  font-family: var(--font-display);
 }
 
-/* tldraw container fix */
-.tl-container {
-  background: #18181b !important;
+.font-mono-raw {
+  font-family: var(--font-mono);
 }
 
-/* Scrollbar styling */
+/* ─────────────────────────────────────────────────────────
+   RAW_INPUT ANIMATIONS
+   ───────────────────────────────────────────────────────── */
+
+@keyframes raw-blink {
+  50% { opacity: 0; }
+}
+
+.raw-blink {
+  animation: raw-blink 1s infinite step-end;
+}
+
+/* ─────────────────────────────────────────────────────────
+   INTERACTIVE COMPONENT STATES
+   Used by Sidebar entries and ToolBar buttons.
+   ───────────────────────────────────────────────────────── */
+
+.raw-sidebar-item:hover {
+  background: var(--color-fg) !important;
+  color: var(--color-bg) !important;
+}
+
+.raw-sidebar-item:hover .entry-date {
+  opacity: 0.6;
+}
+
+.raw-tool-btn:hover {
+  background: var(--color-fg) !important;
+  color: var(--color-bg) !important;
+  font-weight: bold;
+}
+
+/* ─────────────────────────────────────────────────────────
+   SCROLLBAR
+   ───────────────────────────────────────────────────────── */
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #18181b;
+  background: var(--color-black);
+  border-left: 1px solid var(--color-border);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
-  border-radius: 4px;
+  background: var(--color-border);
+  border: 1px solid var(--color-black);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: var(--color-fg);
+}
+
+/* ─────────────────────────────────────────────────────────
+   PROSE (rich text content)
+   ───────────────────────────────────────────────────────── */
+
+.prose {
+  --tw-prose-body:     var(--color-fg);
+  --tw-prose-headings: #fafafa;
+  --tw-prose-links:    #a78bfa;
+  --tw-prose-bold:     #fafafa;
+  --tw-prose-code:     #fafafa;
+  --tw-prose-pre-bg:   var(--color-surface);
+}
+
+/* ─────────────────────────────────────────────────────────
+   TLDRAW / EDITOR OVERRIDES
+   ───────────────────────────────────────────────────────── */
+
+.tl-container {
+  background: var(--color-surface) !important;
 }

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useEditorStore } from '@/store/editor';
 import type { Block } from '@/types/blocks';
 
-// Command Palette (Cmd+K / Ctrl+K)
 export function CommandPalette() {
     const {
         theme,
@@ -21,23 +20,18 @@ export function CommandPalette() {
     const [results, setResults] = useState<Block[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
-    // Open on Cmd+K / Ctrl+K
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
                 setSearchOpen(!searchOpen);
             }
-            if (e.key === 'Escape' && searchOpen) {
-                setSearchOpen(false);
-            }
+            if (e.key === 'Escape' && searchOpen) setSearchOpen(false);
         };
-
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [searchOpen, setSearchOpen]);
 
-    // Focus input when opened
     useEffect(() => {
         if (searchOpen && inputRef.current) {
             inputRef.current.focus();
@@ -47,7 +41,6 @@ export function CommandPalette() {
         }
     }, [searchOpen, setSearchQuery]);
 
-    // Search when query changes
     useEffect(() => {
         if (searchQuery.trim()) {
             const matches = searchBlocks();
@@ -59,44 +52,30 @@ export function CommandPalette() {
     }, [searchQuery, searchBlocks]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            setSelectedIndex(i => Math.min(i + 1, results.length - 1));
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            setSelectedIndex(i => Math.max(i - 1, 0));
-        } else if (e.key === 'Enter' && results[selectedIndex]) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(i => Math.min(i + 1, results.length - 1)); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(i => Math.max(i - 1, 0)); }
+        else if (e.key === 'Enter' && results[selectedIndex]) {
             selectBlock(results[selectedIndex].id);
             setSearchOpen(false);
-            // Scroll to block
             scrollToBlock(results[selectedIndex]);
         }
     };
 
     const scrollToBlock = (block: Block) => {
-        // Attempt to scroll the block into view
         setTimeout(() => {
-            const element = document.querySelector(`[data-block-id="${block.id}"]`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+            const el = document.querySelector(`[data-block-id="${block.id}"]`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
     };
 
     const getBlockPreview = (block: Block): string => {
         switch (block.type) {
-            case 'text':
-                return (block as { plainText?: string }).plainText?.slice(0, 50) || 'Empty text';
-            case 'section':
-                return (block as { label?: string }).label || 'Section';
-            case 'media':
-                return (block as { alt?: string }).alt || 'Image';
-            case 'embed':
-                return (block as { url: string }).url?.slice(0, 40) || 'Embed';
-            case 'markdown':
-                return (block as { content: string }).content?.slice(0, 50) || 'Markdown';
-            case 'diagram':
-                return 'Diagram';
+            case 'text': return (block as any).plainText?.slice(0, 50) || 'Empty text';
+            case 'section': return (block as any).label || 'Section';
+            case 'media': return (block as any).alt || 'Image';
+            case 'embed': return (block as any).url?.slice(0, 40) || 'Embed';
+            case 'markdown': return (block as any).content?.slice(0, 50) || 'Markdown';
+            case 'diagram': return 'Diagram';
         }
     };
 
@@ -114,27 +93,45 @@ export function CommandPalette() {
 
     if (!searchOpen) return null;
 
-    const bgColor = theme === 'dark' ? 'rgba(24, 24, 27, 0.98)' : 'rgba(255, 255, 255, 0.98)';
-    const borderColor = theme === 'dark' ? '#3f3f46' : '#e4e4e7';
-    const textColor = theme === 'dark' ? '#e4e4e7' : '#18181b';
-    const mutedColor = theme === 'dark' ? '#71717a' : '#a1a1aa';
-
     return (
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+                style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.7)' }}
                 onClick={() => setSearchOpen(false)}
             />
 
-            {/* Command Palette */}
-            <div
-                className="fixed top-[20%] left-1/2 -translate-x-1/2 z-50 w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden"
-                style={{ backgroundColor: bgColor, borderColor }}
-            >
-                {/* Search input */}
-                <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor }}>
-                    <svg className="w-5 h-5" style={{ color: mutedColor }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Palette */}
+            <div style={{
+                position: 'fixed', top: '20%', left: '50%', transform: 'translateX(-50%)',
+                zIndex: 50, width: '100%', maxWidth: '560px',
+                backgroundColor: 'var(--color-surface)',
+                border: '2px solid var(--color-border-strong)',
+                overflow: 'hidden',
+            }}>
+                {/* Header */}
+                <div style={{
+                    padding: '6px 16px',
+                    borderBottom: '1px solid var(--color-border)',
+                    fontSize: '0.55rem',
+                    fontFamily: 'var(--font-mono)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '2px',
+                    color: 'var(--color-muted)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                }}>
+                    <span>SEARCH BLOCKS</span>
+                    <span>{blocks.length} TOTAL</span>
+                </div>
+
+                {/* Input */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '14px 16px',
+                    borderBottom: '1px solid var(--color-border)',
+                }}>
+                    <svg width="16" height="16" style={{ color: 'var(--color-muted)', flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <input
@@ -143,48 +140,54 @@ export function CommandPalette() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Search blocks by content, tags, or alt text..."
-                        className="flex-1 bg-transparent border-none outline-none text-sm"
-                        style={{ color: textColor }}
+                        placeholder="SEARCH BY CONTENT, TAGS OR ALT TEXT..."
+                        style={{
+                            flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                            color: 'var(--color-fg)', fontFamily: 'var(--font-mono)',
+                            fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.5px',
+                        }}
                     />
-                    <kbd
-                        className="px-2 py-1 text-xs rounded"
-                        style={{ backgroundColor: theme === 'dark' ? '#27272a' : '#f4f4f5', color: mutedColor }}
-                    >
+                    <span style={{
+                        padding: '3px 8px',
+                        border: '1px solid var(--color-border)',
+                        fontSize: '0.6rem',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--color-muted)',
+                        textTransform: 'uppercase',
+                    }}>
                         ESC
-                    </kbd>
+                    </span>
                 </div>
 
                 {/* Results */}
                 {results.length > 0 && (
-                    <div className="max-h-80 overflow-auto py-2">
+                    <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
                         {results.map((block, index) => (
                             <button
                                 key={block.id}
-                                onClick={() => {
-                                    selectBlock(block.id);
-                                    setSearchOpen(false);
-                                    scrollToBlock(block);
+                                onClick={() => { selectBlock(block.id); setSearchOpen(false); scrollToBlock(block); }}
+                                style={{
+                                    width: '100%', padding: '12px 16px',
+                                    display: 'flex', alignItems: 'center', gap: '12px',
+                                    textAlign: 'left',
+                                    border: 'none',
+                                    borderBottom: '1px solid var(--color-border)',
+                                    borderLeft: index === selectedIndex ? '4px solid var(--color-accent)' : '4px solid transparent',
+                                    backgroundColor: index === selectedIndex ? 'var(--color-fg)' : 'transparent',
+                                    color: index === selectedIndex ? 'var(--color-bg)' : 'var(--color-fg)',
+                                    transition: 'all 0.1s linear',
                                 }}
-                                className={`w-full px-4 py-2 flex items-center gap-3 text-left transition-colors ${index === selectedIndex
-                                    ? 'bg-violet-600 text-white'
-                                    : 'hover:bg-zinc-700/30'
-                                    }`}
-                                style={{ color: index === selectedIndex ? undefined : textColor }}
                             >
-                                <svg
-                                    className="w-4 h-4 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    style={{ color: index === selectedIndex ? 'white' : mutedColor }}
-                                >
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    style={{ flexShrink: 0, opacity: 0.7 }}>
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={getBlockIcon(block.type)} />
                                 </svg>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-sm truncate">{getBlockPreview(block)}</div>
-                                    <div className="text-xs truncate" style={{ color: index === selectedIndex ? 'rgba(255,255,255,0.7)' : mutedColor }}>
-                                        {block.tags?.join(', ') || block.type}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {getBlockPreview(block)}
+                                    </div>
+                                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '1px' }}>
+                                        {block.tags?.join(' · ') || block.type.toUpperCase()}
                                     </div>
                                 </div>
                             </button>
@@ -192,19 +195,25 @@ export function CommandPalette() {
                     </div>
                 )}
 
-                {/* Empty state */}
+                {/* No results */}
                 {searchQuery && results.length === 0 && (
-                    <div className="px-4 py-6 text-center text-sm" style={{ color: mutedColor }}>
-                        No blocks found matching "{searchQuery}"
+                    <div style={{
+                        padding: '24px 16px', textAlign: 'center',
+                        fontFamily: 'var(--font-mono)', fontSize: '0.7rem', textTransform: 'uppercase',
+                        color: 'var(--color-subtle)', letterSpacing: '1px',
+                    }}>
+                        NO MATCH: "{searchQuery}"
                     </div>
                 )}
 
-                {/* Quick actions when no query */}
+                {/* Hint */}
                 {!searchQuery && (
-                    <div className="px-4 py-3">
-                        <div className="text-xs mb-2" style={{ color: mutedColor }}>
-                            {blocks.length} blocks total • Search by content, tags, or alt text
-                        </div>
+                    <div style={{
+                        padding: '12px 16px',
+                        fontFamily: 'var(--font-mono)', fontSize: '0.6rem',
+                        color: 'var(--color-subtle)', textTransform: 'uppercase', letterSpacing: '1px',
+                    }}>
+                        ↑↓ NAVIGATE · ↵ SELECT · ESC CLOSE
                     </div>
                 )}
             </div>

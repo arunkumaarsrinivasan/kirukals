@@ -1,0 +1,134 @@
+# Kirukal v2 — Interactive Diary Walkthrough
+
+## What Was Built
+
+A complete rework of Kirukal from a canvas editor into a **narrative interactive diary** where your hand-drawn sketches connect to real work.
+
+---
+
+## Git Branches
+
+| Branch | Purpose |
+|--------|---------|
+| `previous` | Your original canvas editor (fully preserved) |
+| `v2-interactive-diary` | All new work lives here |
+
+---
+
+## New Pages
+
+| Route | Description |
+|-------|-------------|
+| `/` | New landing page with diary + editor CTAs |
+| `/diary` | Main interactive diary view |
+| `/editor` | Original editor (unchanged) |
+| `/api/og-preview` | Server-side OG link metadata fetcher |
+
+---
+
+## Diary Features
+
+### 📖 Two Layout Modes
+- **Single:** Diary page centered, sketches on left, links/videos on right
+- **Double:** Open-notebook book spread — left page shows scanned photo, right page shows diary text
+
+### 📸 Page Scanner (AI-powered, offline)
+Click **Scan Page** to:
+1. **Camera** or **file upload** a physical diary page
+2. AI detects page edges (Canny edge detection via OpenCV.js)
+3. Drag 4 corner handles to fine-tune the crop
+4. AI detects individual sketch components (contour grouping)
+5. Review each detected sketch — approve, rename, or reject
+6. Everything saves to Supabase automatically
+
+### ✨ Hover Connections
+- Diary text phrases can be linked to media items
+- Hover a linked phrase → floating media preview popup appears
+- Animated SVG arcs draw between the text and its linked media card
+
+---
+
+## Setup Required
+
+### 1. Create Supabase Project (Free)
+1. Go to [supabase.com](https://supabase.com) → **New Project** (free tier)
+2. Go to **SQL Editor** → paste the contents of [supabase/schema.sql](file:///c:/Users/arunk/KIRUKULAM/kirukals/supabase/schema.sql) → **Run**
+3. Go to **Storage** → Create two buckets:
+   - `diary-pages` (Public)
+   - `sketch-components` (Public)
+4. Go to **Settings → API** → copy `Project URL` and `anon key`
+
+### 2. Configure Environment
+```bash
+# Rename the example file
+cp .env.local.example .env.local
+```
+Then edit `.env.local`:
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+### 3. Add OpenCV.js (for page scanning)
+OpenCV.js is loaded from local `/opencv.js`. Download it once:
+```
+https://docs.opencv.org/4.10.0/opencv.js → save to /public/opencv.js
+```
+Or it will attempt to load from `public/opencv.js` — the first load may fail gracefully if not present.
+
+### 4. Run
+```bash
+npm run dev
+```
+
+---
+
+## File Structure (New Files)
+
+```
+src/
+├── app/
+│   ├── diary/page.tsx          ← Main diary view
+│   └── api/og-preview/route.ts ← Link preview fetcher
+├── components/diary/
+│   ├── DiaryEntryCard.tsx      ← Paper-texture entry card
+│   ├── MediaPanel.tsx          ← Left/right surround panels
+│   ├── HoverMediaPreview.tsx   ← Animated media popup
+│   ├── ConnectionOverlay.tsx   ← SVG arc connections
+│   └── PageScanner.tsx         ← Camera + AI scan UI
+├── hooks/
+│   ├── usePageScanner.ts       ← Scan pipeline state machine
+│   └── useConnections.ts       ← Fetch entry connections
+├── lib/
+│   ├── supabase.ts             ← Supabase client
+│   ├── db.ts                   ← CRUD helpers
+│   └── cv/
+│       ├── pageScanner.ts      ← OpenCV.js page crop
+│       └── sketchDetector.ts   ← Contour-based sketch detection
+└── types/
+    └── database.ts             ← Full DB TypeScript types
+supabase/
+└── schema.sql                  ← SQL to run in Supabase dashboard
+```
+
+---
+
+## Demo Recording
+
+![Diary app verification](file:///C:/Users/arunk/.gemini/antigravity/brain/9d504fdf-85fd-44fb-abd1-a5929d7133f1/diary_app_verification_1772000116518.webp)
+
+---
+
+## Tech Stack (Zero Cost)
+
+| Purpose | Tool | Cost |
+|---------|------|------|
+| Framework | Next.js 16 App Router | Free |
+| Database | Supabase free tier | Free |
+| File storage | Supabase Storage (1GB free) | Free |
+| Edge AI (page scan) | OpenCV.js (WASM, in-browser) | Free / Offline |
+| Edge AI (sketch detect) | OpenCV.js contour detection | Free / Offline |
+| Animations | Framer Motion | Free |
+| Deployment | Vercel (hobby plan) | Free |
+
+> **Future scaling:** Supabase is open-source and self-hostable. The schema is simple and extensible — add auth, public sharing, or collaborators without a rewrite.

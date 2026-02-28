@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DiaryEntry, MediaItem } from '@/types/database';
 import type { ConnectionWithMedia } from '@/hooks/useConnections';
@@ -14,6 +14,13 @@ interface DiaryEntryCardProps {
     isSelected?: boolean;
 }
 
+const TYPE_LABEL: Record<string, string> = {
+    diary: '📓 DIARY',
+    case_study: '🔍 CASE_STUDY',
+    sketch: '✏️ SKETCH',
+    note: '📌 NOTE',
+};
+
 export function DiaryEntryCard({
     entry,
     connections,
@@ -24,112 +31,143 @@ export function DiaryEntryCard({
 }: DiaryEntryCardProps) {
     const [hoveredConnectionId, setHoveredConnectionId] = useState<string | null>(null);
 
-    const TYPE_COLORS: Record<string, string> = {
-        diary: 'from-amber-500/20 to-orange-500/20 border-amber-500/30',
-        case_study: 'from-violet-500/20 to-fuchsia-500/20 border-violet-500/30',
-        sketch: 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30',
-        note: 'from-sky-500/20 to-blue-500/20 border-sky-500/30',
-    };
-
-    const TYPE_BADGE: Record<string, string> = {
-        diary: '📓 Diary',
-        case_study: '🔍 Case Study',
-        sketch: '✏️ Sketch',
-        note: '📌 Note',
-    };
-
-    const style = TYPE_COLORS[entry.entry_type] ?? TYPE_COLORS.diary;
-
     return (
         <motion.div
             layout
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -2 }}
             onClick={onSelect}
-            className={`
-        relative rounded-2xl border bg-gradient-to-br ${style}
-        cursor-pointer transition-shadow duration-200
-        ${isSelected ? 'ring-2 ring-violet-500 shadow-xl shadow-violet-500/10' : 'hover:shadow-lg'}
-        ${layoutMode === 'double' ? 'min-h-[320px]' : ''}
-      `}
+            style={{
+                position: 'relative',
+                backgroundColor: 'var(--color-surface)',
+                border: isSelected ? '2px solid var(--color-border-strong)' : '1px solid var(--color-border)',
+                borderLeft: `4px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                padding: '20px',
+                cursor: 'crosshair',
+                minHeight: layoutMode === 'double' ? '320px' : undefined,
+                transition: 'border-color 0.1s linear',
+            }}
         >
-            {/* Paper texture overlay */}
-            <div className="absolute inset-0 rounded-2xl opacity-[0.03] pointer-events-none"
-                style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect x='0' y='0' width='2' height='2' fill='%23fff'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23fff'/%3E%3C/svg%3E")`
-                }}
-            />
-
-            <div className="relative p-5">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-3">
-                    <div>
-                        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
-                            {TYPE_BADGE[entry.entry_type]}
-                        </span>
-                        {entry.title && (
-                            <h3 className="text-white font-semibold text-base mt-1 leading-snug">{entry.title}</h3>
-                        )}
-                    </div>
-                    <time className="text-xs text-zinc-600 shrink-0 ml-2">
-                        {new Date(entry.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    </time>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                <div>
+                    <span style={{
+                        fontSize: '0.6rem',
+                        fontFamily: 'var(--font-mono)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '2px',
+                        color: 'var(--color-muted)',
+                    }}>
+                        {TYPE_LABEL[entry.entry_type] ?? TYPE_LABEL.diary}
+                    </span>
+                    {entry.title && (
+                        <h3 style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '0.9rem',
+                            fontWeight: 700,
+                            color: 'var(--color-fg)',
+                            marginTop: '4px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                        }}>
+                            {entry.title}
+                        </h3>
+                    )}
                 </div>
-
-                {/* Page image (scanned diary page) */}
-                {entry.page_image_url && (
-                    <div className="mb-4 rounded-xl overflow-hidden border border-white/10">
-                        <img
-                            src={entry.page_image_url}
-                            alt={entry.title ?? 'Diary page'}
-                            className="w-full object-contain max-h-64 bg-amber-50/5"
-                        />
-                    </div>
-                )}
-
-                {/* Content (rich text preview) */}
-                {entry.plain_text && (
-                    <div className="text-sm text-zinc-300 leading-relaxed line-clamp-4 mb-3">
-                        <LinkedText
-                            text={entry.plain_text}
-                            connections={connections}
-                            onHoverLink={onHoverLink}
-                            onHoverChange={(connId) => setHoveredConnectionId(connId)}
-                        />
-                    </div>
-                )}
-
-                {/* Tags */}
-                {entry.tags && entry.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                        {entry.tags.map((tag) => (
-                            <span key={tag}
-                                className="text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400">
-                                #{tag}
-                            </span>
-                        ))}
-                    </div>
-                )}
-
-                {/* Connection count badge */}
-                {connections.length > 0 && (
-                    <div className="absolute top-4 right-4 flex items-center gap-1 text-xs text-violet-400">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 015.656 0l4 4a4 4 0 01-5.656 5.656l-1.102-1.101" />
-                        </svg>
-                        {connections.length}
-                    </div>
-                )}
+                <time style={{
+                    fontSize: '0.6rem',
+                    color: 'var(--color-subtle)',
+                    fontFamily: 'var(--font-mono)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    flexShrink: 0,
+                    marginLeft: '8px',
+                }}>
+                    {new Date(entry.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                </time>
             </div>
 
-            {/* Hover glow line at bottom */}
+            {/* Page image */}
+            {entry.page_image_url && (
+                <div style={{ marginBottom: '16px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+                    <img
+                        src={entry.page_image_url}
+                        alt={entry.title ?? 'Diary page'}
+                        style={{ width: '100%', objectFit: 'contain', maxHeight: '256px', filter: 'grayscale(15%)' }}
+                    />
+                </div>
+            )}
+
+            {/* Content text */}
+            {entry.plain_text && (
+                <div style={{
+                    fontSize: '0.8rem',
+                    color: 'var(--color-muted)',
+                    lineHeight: 1.8,
+                    marginBottom: '12px',
+                    fontFamily: 'var(--font-mono)',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 4,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                }}>
+                    <LinkedText
+                        text={entry.plain_text}
+                        connections={connections}
+                        onHoverLink={onHoverLink}
+                        onHoverChange={(connId) => setHoveredConnectionId(connId)}
+                    />
+                </div>
+            )}
+
+            {/* Tags */}
+            {entry.tags && entry.tags.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
+                    {entry.tags.map((tag) => (
+                        <span key={tag}
+                            style={{
+                                fontSize: '0.6rem',
+                                padding: '3px 8px',
+                                border: '1px solid var(--color-border)',
+                                color: 'var(--color-muted)',
+                                fontFamily: 'var(--font-mono)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '1px',
+                            }}>
+                            #{tag}
+                        </span>
+                    ))}
+                </div>
+            )}
+
+            {/* Connection count */}
+            {connections.length > 0 && (
+                <div style={{
+                    position: 'absolute', top: '16px', right: '16px',
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                    fontSize: '0.6rem',
+                    color: 'var(--color-accent)',
+                    fontFamily: 'var(--font-mono)',
+                    textTransform: 'uppercase',
+                }}>
+                    <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                    </svg>
+                    [{connections.length}]
+                </div>
+            )}
+
+            {/* Active connection indicator — bottom bar */}
             <AnimatePresence>
                 {hoveredConnectionId && (
                     <motion.div
                         initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} exit={{ scaleX: 0 }}
-                        className="absolute bottom-0 inset-x-0 h-0.5 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 rounded-b-2xl origin-left"
+                        style={{
+                            position: 'absolute', bottom: 0, left: 0, right: 0,
+                            height: '3px',
+                            backgroundColor: 'var(--color-accent)',
+                            transformOrigin: 'left',
+                        }}
                     />
                 )}
             </AnimatePresence>
@@ -137,7 +175,7 @@ export function DiaryEntryCard({
     );
 }
 
-// ─── LinkedText ───────────────────────────────────────────────────────────────
+// ─── LinkedText ────────────────────────────────────────────────────────────────
 
 function LinkedText({ text, connections, onHoverLink, onHoverChange }: {
     text: string;
@@ -145,7 +183,6 @@ function LinkedText({ text, connections, onHoverLink, onHoverChange }: {
     onHoverLink?: (media: MediaItem | null, anchorRect?: DOMRect) => void;
     onHoverChange?: (id: string | null) => void;
 }) {
-    // Build segments: split plain text around connection span_texts
     const segments: Array<{ text: string; connection?: ConnectionWithMedia }> = [];
     let remaining = text;
 
@@ -162,9 +199,7 @@ function LinkedText({ text, connections, onHoverLink, onHoverChange }: {
     return (
         <>
             {segments.map((seg, i) => {
-                if (!seg.connection) {
-                    return <span key={i}>{seg.text}</span>;
-                }
+                if (!seg.connection) return <span key={i}>{seg.text}</span>;
                 const conn = seg.connection;
                 return (
                     <LinkedSpan
@@ -193,14 +228,16 @@ function LinkedSpan({ text, media, onEnter, onLeave }: {
     onLeave: () => void;
 }) {
     const ref = useRef<HTMLSpanElement>(null);
-
     return (
         <motion.span
             ref={ref}
-            className="relative cursor-pointer text-violet-300 underline decoration-violet-500/40 decoration-dotted underline-offset-2 hover:decoration-solid hover:text-violet-200 transition-colors"
+            style={{
+                color: 'var(--color-fg)',
+                borderBottom: '1px solid var(--color-accent)',
+                textDecorationStyle: 'dotted',
+            }}
             onHoverStart={() => ref.current && onEnter(ref.current.getBoundingClientRect())}
             onHoverEnd={onLeave}
-            whileHover={{ textShadow: '0 0 12px rgba(139,92,246,0.6)' }}
         >
             {text}
         </motion.span>

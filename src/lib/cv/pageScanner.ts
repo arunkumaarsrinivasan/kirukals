@@ -18,43 +18,65 @@ export interface PageCorner {
 }
 
 let cvReady = false;
+let cvLoadPromise: Promise<void> | null = null;
+
+// CDN URLs to try in order
+const OPENCV_SOURCES = [
+    '/opencv.js', // local public folder (fastest if available)
+    'https://cdn.jsdelivr.net/npm/opencv.js@1.2.1/opencv.js',
+];
 
 /**
- * Lazy-loads OpenCV.js from the public folder.
- * Cached after first load — subsequent calls are instant.
+ * Lazy-loads OpenCV.js — tries local public folder first, then CDN.
+ * Subsequent calls return the cached promise (no double-load).
  */
 export function loadOpenCV(): Promise<void> {
-    return new Promise((resolve, reject) => {
-        if (cvReady) {
-            resolve();
-            return;
-        }
+    if (cvReady) return Promise.resolve();
+    if (cvLoadPromise) return cvLoadPromise;
 
-        // Check if already loaded
-        if (typeof window !== 'undefined' && (window as any).cv?.Mat) {
-            cvReady = true;
-            resolve();
-            return;
-        }
+    // Already loaded externally
+    if (typeof window !== 'undefined' && (window as any).cv?.Mat) {
+        cvReady = true;
+        return Promise.resolve();
+    }
+
+    cvLoadPromise = tryLoadFromSources(OPENCV_SOURCES);
+    return cvLoadPromise;
+}
+
+function tryLoadFromSources(sources: string[]): Promise<void> {
+    const [first, ...rest] = sources;
+    return loadScriptWithInit(first).catch((err) => {
+        if (rest.length === 0) throw err;
+        console.warn(`[OpenCV] Failed to load from ${first}, trying next source…`);
+        return tryLoadFromSources(rest);
+    });
+}
+
+function loadScriptWithInit(src: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            reject(new Error(`OpenCV WASM init timeout (${src})`));
+        }, 30000);
+
+        // OpenCV.js calls this callback when its WASM is ready
+        (window as any).Module = {
+            onRuntimeInitialized: () => {
+                clearTimeout(timeout);
+                cvReady = true;
+                resolve();
+            },
+        };
 
         const script = document.createElement('script');
-        // Try local first; fallback to jsDelivr CDN (cached by browser after first load)
-        script.src = '/opencv.js';
-        script.onload = () => {
-            // OpenCV.js has async WASM init
-            const pollReady = setInterval(() => {
-                if ((window as any).cv?.Mat) {
-                    cvReady = true;
-                    clearInterval(pollReady);
-                    resolve();
-                }
-            }, 100);
-            setTimeout(() => {
-                clearInterval(pollReady);
-                reject(new Error('OpenCV WASM init timeout'));
-            }, 15000);
+        script.async = true;
+        script.src = src;
+        script.onerror = () => {
+            clearTimeout(timeout);
+            // Clean up stale Module hook
+            delete (window as any).Module;
+            reject(new Error(`Failed to load OpenCV.js from ${src}`));
         };
-        script.onerror = () => reject(new Error('Failed to load OpenCV.js'));
         document.head.appendChild(script);
     });
 }
